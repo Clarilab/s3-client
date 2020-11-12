@@ -162,11 +162,11 @@ func (s *s3) DownloadDirectory(path string) ([]*Document, error) {
 	return result, nil
 }
 
-func (s *s3) DownloadDirectoryToPath(path, localPath string) error {
+func (s *s3) DownloadDirectoryToPath(path, localPath string, recursive bool) error {
 	doneCh := make(chan struct{})
 	defer close(doneCh)
 
-	objectCh := s.client.ListObjectsV2(s.bucketName, path, true, doneCh)
+	objectCh := s.client.ListObjectsV2(s.bucketName, path, recursive, doneCh)
 	wg := sync.WaitGroup{}
 	errCh := make(chan error)
 
