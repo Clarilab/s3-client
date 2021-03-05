@@ -30,8 +30,8 @@ type s3 struct {
 }
 
 // NewClient instantiates a s3.
-func NewClient(s3URL, accessKey, accessSecret, bucketName string) (Client, error) {
-	client, err := minio.New(s3URL, accessKey, accessSecret, true)
+func NewClient(s3URL, accessKey, accessSecret, bucketName string, secure bool) (Client, error) {
+	client, err := minio.New(s3URL, accessKey, accessSecret, secure)
 	if err != nil {
 		return nil, err
 	}
