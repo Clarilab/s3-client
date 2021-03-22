@@ -17,6 +17,7 @@ type Document struct {
 	Content      []byte
 	ModifiedDate time.Time
 	ContentType  string
+	Name         string
 }
 
 // ErrNotFound indicates that the requested document does not exist.
@@ -234,10 +235,14 @@ func (s *s3) DownloadFile(path string) (*Document, error) {
 		return nil, err
 	}
 
+	splittedPath := strings.Split(path, "/")
+	docName := splittedPath[len(splittedPath)-1]
+
 	document := &Document{
 		Content:      content,
 		ModifiedDate: fileInfo.LastModified,
 		ContentType:  fileInfo.ContentType,
+		Name:         docName,
 	}
 
 	return document, nil
