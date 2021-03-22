@@ -17,6 +17,7 @@ type Document struct {
 	Content      []byte
 	ModifiedDate time.Time
 	ContentType  string
+	Name         string
 }
 
 // ErrNotFound indicates that the requested document does not exist.
@@ -234,10 +235,13 @@ func (s *s3) DownloadFile(path string) (*Document, error) {
 		return nil, err
 	}
 
+	docName := extractFilenameFromPath(path)
+
 	document := &Document{
 		Content:      content,
 		ModifiedDate: fileInfo.LastModified,
 		ContentType:  fileInfo.ContentType,
+		Name:         docName,
 	}
 
 	return document, nil
@@ -245,4 +249,15 @@ func (s *s3) DownloadFile(path string) (*Document, error) {
 
 func (s *s3) RemoveFile(path string) error {
 	return s.client.RemoveObject(s.bucketName, path)
+}
+
+func extractFilenameFromPath(path string) string {
+	var docName string
+
+	splittedPath := strings.Split(path, "/")
+	if len(splittedPath) > 0 {
+		docName = splittedPath[len(splittedPath)-1]
+	}
+
+	return docName
 }
