@@ -235,12 +235,7 @@ func (s *s3) DownloadFile(path string) (*Document, error) {
 		return nil, err
 	}
 
-	var docName string
-
-	splittedPath := strings.Split(path, "/")
-	if len(splittedPath) > 0 {
-		docName = splittedPath[len(splittedPath)-1]
-	}
+	docName := extractFilenameFromPath(path)
 
 	document := &Document{
 		Content:      content,
@@ -254,4 +249,15 @@ func (s *s3) DownloadFile(path string) (*Document, error) {
 
 func (s *s3) RemoveFile(path string) error {
 	return s.client.RemoveObject(s.bucketName, path)
+}
+
+func extractFilenameFromPath(path string) string {
+	var docName string
+
+	splittedPath := strings.Split(path, "/")
+	if len(splittedPath) > 0 {
+		docName = splittedPath[len(splittedPath)-1]
+	}
+
+	return docName
 }
