@@ -235,8 +235,12 @@ func (s *s3) DownloadFile(path string) (*Document, error) {
 		return nil, err
 	}
 
+	var docName string
+
 	splittedPath := strings.Split(path, "/")
-	docName := splittedPath[len(splittedPath)-1]
+	if len(splittedPath) > 0 {
+		docName = splittedPath[len(splittedPath)-1]
+	}
 
 	document := &Document{
 		Content:      content,
