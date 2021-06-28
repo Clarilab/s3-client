@@ -14,10 +14,10 @@ import (
 
 // Document holds document content and some meta data.
 type Document struct {
-	Content      []byte
-	ModifiedDate time.Time
-	ContentType  string
-	Name         string
+	Content      []byte    `json:"content,omitempty"`
+	ModifiedDate time.Time `json:"modifiedDate,omitempty"`
+	ContentType  string    `json:"contentType,omitempty"`
+	Name         string    `json:"name,omitempty"`
 }
 
 // ErrNotFound indicates that the requested document does not exist.
