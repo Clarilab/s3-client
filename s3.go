@@ -1,6 +1,8 @@
 package s3
 
 import (
+	"context"
+	"encoding/xml"
 	"fmt"
 	"io"
 	"net/url"
@@ -8,7 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/minio/minio-go/v6"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/minio/minio-go/v7/pkg/lifecycle"
 	"github.com/pkg/errors"
 )
 
@@ -31,13 +35,16 @@ type s3 struct {
 }
 
 // NewClient instantiates a s3.
-func NewClient(s3URL, accessKey, accessSecret, bucketName string, secure bool) (Client, error) {
-	client, err := minio.New(s3URL, accessKey, accessSecret, secure)
+func NewClient(ctx context.Context, s3URL, accessKey, accessSecret, bucketName string, secure bool) (Client, error) {
+	client, err := minio.New(s3URL, &minio.Options{
+		Creds:  credentials.NewStaticV4(accessKey, accessSecret, ""),
+		Secure: secure,
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	exists, err := client.BucketExists(bucketName)
+	exists, err := client.BucketExists(ctx, bucketName)
 	if err != nil {
 		return nil, err
 	}
@@ -57,43 +64,51 @@ func NewClient(s3URL, accessKey, accessSecret, bucketName string, secure bool) (
 	}, nil
 }
 
-func (s *s3) AddLifeCycleRule(ruleID, folderPath string, daysToExpiry int) error {
+func (s *s3) AddLifeCycleRule(ctx context.Context, ruleID, folderPath string, daysToExpiry int) error {
 	if !strings.HasSuffix(folderPath, "/") {
 		folderPath += "/"
 	}
 
-	lifeCycleString := fmt.Sprintf(
-		`<LifecycleConfiguration><Rule><ID>%s</ID><Prefix>%s</Prefix><Status>Enabled</Status><Expiration><Days>%d</Days></Expiration></Rule></LifecycleConfiguration>`,
-		ruleID, folderPath, daysToExpiry)
-
-	return s.client.SetBucketLifecycle(s.bucketName, lifeCycleString)
+	return s.client.SetBucketLifecycle(ctx, s.bucketName, &lifecycle.Configuration{
+		XMLName: xml.Name{},
+		Rules: []lifecycle.Rule{
+			{
+				ID: ruleID,
+				Expiration: lifecycle.Expiration{
+					Days: lifecycle.ExpirationDays(daysToExpiry),
+				},
+				Prefix: folderPath,
+				Status: "Enabled",
+			},
+		},
+	})
 }
 
-func (s *s3) UploadFile(path, contentType string, data io.Reader, objectSize *int64) error {
+func (s *s3) UploadFile(ctx context.Context, path, contentType string, data io.Reader, objectSize *int64) error {
 	size := int64(-1)
 
 	if objectSize != nil {
 		size = *objectSize
 	}
 
-	_, err := s.client.PutObject(s.bucketName, path, data, size, minio.PutObjectOptions{ContentType: contentType})
+	_, err := s.client.PutObject(ctx, s.bucketName, path, data, size, minio.PutObjectOptions{ContentType: contentType})
 
 	return err
 }
 
-func (s *s3) GetFileURL(path string, expiration time.Duration) (*url.URL, error) {
-	return s.client.PresignedGetObject(s.bucketName, path, expiration, s.urlValues)
+func (s *s3) GetFileURL(ctx context.Context, path string, expiration time.Duration) (*url.URL, error) {
+	return s.client.PresignedGetObject(ctx, s.bucketName, path, expiration, s.urlValues)
 }
 
-func (s *s3) GetDocumentsInPath(path string, recursive bool) ([]string, error) {
+func (s *s3) GetDocumentsInPath(ctx context.Context, path string, recursive bool) ([]string, error) {
 	if !strings.HasSuffix(path, "/") {
 		path += "/"
 	}
 
-	doneCh := make(chan struct{})
-	defer close(doneCh)
-
-	objectCh := s.client.ListObjectsV2(s.bucketName, path, recursive, doneCh)
+	objectCh := s.client.ListObjects(ctx, s.bucketName, minio.ListObjectsOptions{
+		Prefix:    path,
+		Recursive: recursive,
+	})
 	result := make([]string, 0, len(objectCh))
 
 	for obj := range objectCh {
@@ -108,20 +123,23 @@ func (s *s3) GetDocumentsInPath(path string, recursive bool) ([]string, error) {
 	return result, nil
 }
 
-func (s *s3) UploadJSONFileWithLink(path string, data io.Reader, linkExpiration time.Duration) (*url.URL, error) {
-	_, err := s.client.PutObject(s.bucketName, path, data, -1, minio.PutObjectOptions{ContentType: "application/json"})
+func (s *s3) UploadJSONFileWithLink(ctx context.Context, path string, data io.Reader, linkExpiration time.Duration) (*url.URL, error) {
+	_, err := s.client.PutObject(ctx, s.bucketName, path, data, -1, minio.PutObjectOptions{ContentType: "application/json"})
 	if err != nil {
 		return nil, err
 	}
 
-	return s.client.PresignedGetObject(s.bucketName, path, linkExpiration, s.urlValues)
+	return s.client.PresignedGetObject(ctx, s.bucketName, path, linkExpiration, s.urlValues)
 }
 
-func (s *s3) DownloadDirectory(path string) ([]*Document, error) {
+func (s *s3) DownloadDirectory(ctx context.Context, path string) ([]*Document, error) {
 	doneCh := make(chan struct{})
 	defer close(doneCh)
 
-	objectCh := s.client.ListObjectsV2(s.bucketName, path, true, doneCh)
+	objectCh := s.client.ListObjects(ctx, s.bucketName, minio.ListObjectsOptions{
+		Prefix:    path,
+		Recursive: true,
+	})
 	wg := sync.WaitGroup{}
 	errCh := make(chan error)
 
@@ -135,7 +153,7 @@ func (s *s3) DownloadDirectory(path string) ([]*Document, error) {
 		wg.Add(1)
 
 		go func(obj minio.ObjectInfo, errChan chan<- error) {
-			doc, err := s.DownloadFile(obj.Key)
+			doc, err := s.DownloadFile(ctx, obj.Key)
 			if err != nil {
 				errCh <- err
 
@@ -163,11 +181,14 @@ func (s *s3) DownloadDirectory(path string) ([]*Document, error) {
 	return result, nil
 }
 
-func (s *s3) DownloadDirectoryToPath(path, localPath string, recursive bool) error {
+func (s *s3) DownloadDirectoryToPath(ctx context.Context, path, localPath string, recursive bool) error {
 	doneCh := make(chan struct{})
 	defer close(doneCh)
 
-	objectCh := s.client.ListObjectsV2(s.bucketName, path, recursive, doneCh)
+	objectCh := s.client.ListObjects(ctx, s.bucketName, minio.ListObjectsOptions{
+		Prefix:    path,
+		Recursive: recursive,
+	})
 	wg := sync.WaitGroup{}
 	errCh := make(chan error)
 
@@ -181,7 +202,7 @@ func (s *s3) DownloadDirectoryToPath(path, localPath string, recursive bool) err
 		go func(obj minio.ObjectInfo) {
 			fileName := strings.TrimPrefix(obj.Key, path+"/")
 
-			err := s.DownloadFileToPath(obj.Key, localPath+"/"+fileName)
+			err := s.DownloadFileToPath(ctx, obj.Key, localPath+"/"+fileName)
 			if err != nil {
 				errCh <- err
 			}
@@ -205,12 +226,12 @@ func (s *s3) DownloadDirectoryToPath(path, localPath string, recursive bool) err
 	return nil
 }
 
-func (s *s3) DownloadFileToPath(path, localPath string) error {
-	return s.client.FGetObject(s.bucketName, path, localPath, minio.GetObjectOptions{})
+func (s *s3) DownloadFileToPath(ctx context.Context, path, localPath string) error {
+	return s.client.FGetObject(ctx, s.bucketName, path, localPath, minio.GetObjectOptions{})
 }
 
-func (s *s3) DownloadFile(path string) (*Document, error) {
-	object, err := s.client.GetObject(s.bucketName, path, minio.GetObjectOptions{})
+func (s *s3) DownloadFile(ctx context.Context, path string) (*Document, error) {
+	object, err := s.client.GetObject(ctx, s.bucketName, path, minio.GetObjectOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -247,8 +268,8 @@ func (s *s3) DownloadFile(path string) (*Document, error) {
 	return document, nil
 }
 
-func (s *s3) RemoveFile(path string) error {
-	return s.client.RemoveObject(s.bucketName, path)
+func (s *s3) RemoveFile(ctx context.Context, path string) error {
+	return s.client.RemoveObject(ctx, s.bucketName, path, minio.RemoveObjectOptions{})
 }
 
 func extractFilenameFromPath(path string) string {
