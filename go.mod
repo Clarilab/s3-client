@@ -3,7 +3,7 @@ module github.com/Clarilab/s3-client/v2
 go 1.19
 
 require (
-	github.com/minio/minio-go/v7 v7.0.66
+	github.com/minio/minio-go/v7 v7.0.67
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.4
 )
