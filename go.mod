@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/minio/minio-go/v7 v7.0.66
 	github.com/pkg/errors v0.9.1
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 )
 
 require (
