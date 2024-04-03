@@ -3,6 +3,7 @@ package s3
 import (
 	"context"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -13,7 +14,6 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/minio/minio-go/v7/pkg/lifecycle"
-	"github.com/pkg/errors"
 )
 
 // Document holds document content and some meta data.
@@ -91,13 +91,26 @@ func (s *s3) UploadFile(ctx context.Context, path, contentType string, data io.R
 		size = *objectSize
 	}
 
-	_, err := s.client.PutObject(ctx, s.bucketName, path, data, size, minio.PutObjectOptions{ContentType: contentType})
+	_, err := s.client.PutObject(
+		ctx,
+		s.bucketName,
+		path,
+		data,
+		size,
+		minio.PutObjectOptions{ContentType: contentType},
+	)
 
 	return err
 }
 
 func (s *s3) GetFileURL(ctx context.Context, path string, expiration time.Duration) (*url.URL, error) {
-	return s.client.PresignedGetObject(ctx, s.bucketName, path, expiration, s.urlValues)
+	return s.client.PresignedGetObject(
+		ctx,
+		s.bucketName,
+		path,
+		expiration,
+		s.urlValues,
+	)
 }
 
 func (s *s3) GetDocumentsInPath(ctx context.Context, path string, recursive bool) ([]string, error) {
@@ -123,13 +136,31 @@ func (s *s3) GetDocumentsInPath(ctx context.Context, path string, recursive bool
 	return result, nil
 }
 
-func (s *s3) UploadJSONFileWithLink(ctx context.Context, path string, data io.Reader, linkExpiration time.Duration) (*url.URL, error) {
-	_, err := s.client.PutObject(ctx, s.bucketName, path, data, -1, minio.PutObjectOptions{ContentType: "application/json"})
+func (s *s3) UploadJSONFileWithLink(
+	ctx context.Context,
+	path string,
+	data io.Reader,
+	linkExpiration time.Duration,
+) (*url.URL, error) {
+	_, err := s.client.PutObject(
+		ctx,
+		s.bucketName,
+		path,
+		data,
+		-1,
+		minio.PutObjectOptions{ContentType: "application/json"},
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	return s.client.PresignedGetObject(ctx, s.bucketName, path, linkExpiration, s.urlValues)
+	return s.client.PresignedGetObject(
+		ctx,
+		s.bucketName,
+		path,
+		linkExpiration,
+		s.urlValues,
+	)
 }
 
 func (s *s3) DownloadDirectory(ctx context.Context, path string) ([]*Document, error) {
@@ -227,7 +258,22 @@ func (s *s3) DownloadDirectoryToPath(ctx context.Context, path, localPath string
 }
 
 func (s *s3) DownloadFileToPath(ctx context.Context, path, localPath string) error {
-	return s.client.FGetObject(ctx, s.bucketName, path, localPath, minio.GetObjectOptions{})
+	return s.client.FGetObject(
+		ctx,
+		s.bucketName,
+		path,
+		localPath,
+		minio.GetObjectOptions{},
+	)
+}
+
+func (s *s3) GetObject(ctx context.Context, path string) (*minio.Object, error) {
+	return s.client.GetObject(
+		ctx,
+		s.bucketName,
+		path,
+		minio.GetObjectOptions{},
+	)
 }
 
 func (s *s3) DownloadFile(ctx context.Context, path string) (*Document, error) {

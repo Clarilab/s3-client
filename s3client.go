@@ -5,6 +5,8 @@ import (
 	"io"
 	"net/url"
 	"time"
+
+	"github.com/minio/minio-go/v7"
 )
 
 // Client holds all callable methods.
@@ -40,4 +42,8 @@ type Client interface {
 
 	// RemoveFile deletes the file under given s3 path.
 	RemoveFile(ctx context.Context, path string) error
+
+	// GetObject returns an minio.Object for the given s3 path.
+	// Don't forget to close the Object.
+	GetObject(ctx context.Context, path string) (*minio.Object, error)
 }
