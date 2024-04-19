@@ -97,7 +97,10 @@ func (s *s3) UploadFile(ctx context.Context, path, contentType string, data io.R
 		path,
 		data,
 		size,
-		minio.PutObjectOptions{ContentType: contentType},
+		minio.PutObjectOptions{
+			ContentType: contentType,
+			Expires:     time.Now().Add(time.Hour * 2160),
+		},
 	)
 
 	return err
