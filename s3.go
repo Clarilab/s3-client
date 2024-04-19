@@ -91,12 +91,12 @@ func (s *s3) UploadFile(ctx context.Context, path, contentType string, data io.R
 		size = *objectSize
 	}
 
-	minioOptions := &minio.PutObjectOptions{
+	minioOptions := minio.PutObjectOptions{
 		ContentType: contentType,
 	}
 
 	for _, option := range options {
-		option(minioOptions)
+		option(&minioOptions)
 	}
 
 	_, err := s.client.PutObject(
