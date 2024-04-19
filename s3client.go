@@ -15,7 +15,7 @@ type Client interface {
 	AddLifeCycleRule(ctx context.Context, ruleID, folderPath string, daysToExpiry int) error
 
 	// UploadFile uploads data under a given s3 path.
-	UploadFile(ctx context.Context, path, contentType string, data io.Reader, objectSize *int64) error
+	UploadFile(ctx context.Context, path, contentType string, data io.Reader, objectSize *int64, options ...func(*minio.PutObjectOptions)) error
 
 	// UploadJSONFileWithLink uploads a file with content type "application/json" to the given s3 path.
 	UploadJSONFileWithLink(ctx context.Context, path string, data io.Reader, linkExpiration time.Duration) (*url.URL, error)

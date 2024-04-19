@@ -84,11 +84,19 @@ func (s *s3) AddLifeCycleRule(ctx context.Context, ruleID, folderPath string, da
 	})
 }
 
-func (s *s3) UploadFile(ctx context.Context, path, contentType string, data io.Reader, objectSize *int64) error {
+func (s *s3) UploadFile(ctx context.Context, path, contentType string, data io.Reader, objectSize *int64, options ...func(*minio.PutObjectOptions)) error {
 	size := int64(-1)
 
 	if objectSize != nil {
 		size = *objectSize
+	}
+
+	minioOptions := minio.PutObjectOptions{
+		ContentType: contentType,
+	}
+
+	for _, option := range options {
+		option(&minioOptions)
 	}
 
 	_, err := s.client.PutObject(
@@ -97,7 +105,7 @@ func (s *s3) UploadFile(ctx context.Context, path, contentType string, data io.R
 		path,
 		data,
 		size,
-		minio.PutObjectOptions{ContentType: contentType},
+		minioOptions,
 	)
 
 	return err
