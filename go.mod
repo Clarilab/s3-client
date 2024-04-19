@@ -1,8 +1,6 @@
 module github.com/Clarilab/s3-client/v2
 
-go 1.21
-
-toolchain go1.22.1
+go 1.22.2
 
 require (
 	github.com/minio/minio-go/v7 v7.0.69
