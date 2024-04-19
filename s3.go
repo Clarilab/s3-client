@@ -105,9 +105,7 @@ func (s *s3) UploadFile(ctx context.Context, path, contentType string, data io.R
 		path,
 		data,
 		size,
-		minio.PutObjectOptions{
-			ContentType: contentType,
-		},
+		minioOptions,
 	)
 
 	return err
