@@ -18,10 +18,11 @@ import (
 
 // Document holds document content and some meta data.
 type Document struct {
-	Content      []byte    `json:"content,omitempty"`
-	ModifiedDate time.Time `json:"modifiedDate,omitempty"`
-	ContentType  string    `json:"contentType,omitempty"`
-	Name         string    `json:"name,omitempty"`
+	Content      []byte            `json:"content,omitempty"`
+	ModifiedDate time.Time         `json:"modifiedDate,omitempty"`
+	ContentType  string            `json:"contentType,omitempty"`
+	Name         string            `json:"name,omitempty"`
+	MetaData     map[string]string `json:"metadata,omitempty"`
 }
 
 // ErrNotFound indicates that the requested document does not exist.
@@ -317,6 +318,7 @@ func (s *s3) DownloadFile(ctx context.Context, path string) (*Document, error) {
 		ModifiedDate: fileInfo.LastModified,
 		ContentType:  fileInfo.ContentType,
 		Name:         docName,
+		MetaData:     fileInfo.UserMetadata,
 	}
 
 	return document, nil
