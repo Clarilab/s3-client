@@ -26,9 +26,6 @@ type Client interface {
 	// UploadFileWithOptions uploads data under a given s3 path with options.
 	UploadFileWithOptions(ctx context.Context, path string, data io.Reader, objectSize *int64, options minio.PutObjectOptions) (*minio.UploadInfo, error)
 
-	// UploadJSONFileWithLink uploads a file with content type "application/json" to the given s3 path.
-	UploadJSONFileWithLink(ctx context.Context, path string, data io.Reader, linkExpiration time.Duration) (*url.URL, error)
-
 	// GetFileURL creates a link with expiration for a file under the given path.
 	GetFileURL(ctx context.Context, path string, expiration time.Duration) (*url.URL, error)
 
@@ -36,31 +33,31 @@ type Client interface {
 	// The recursive option also lists all files from sub folders.
 	GetFileNamesInPath(ctx context.Context, path string, recursive bool) ([]string, error)
 
-	// DownloadFile returns the file from given s3 path.
-	DownloadFile(ctx context.Context, path string) (*File, error)
+	// GetFile returns the file from given s3 path.
+	GetFile(ctx context.Context, path string) (*File, error)
 
-	// DownloadFileWithOptions returns the file from given s3 path with options
-	DownloadFileWithOptions(ctx context.Context, path string, options minio.GetObjectOptions) (*File, error)
+	// GetFileWithOptions returns the file from given s3 path with options
+	GetFileWithOptions(ctx context.Context, path string, options minio.GetObjectOptions) (*File, error)
 
-	// DownloadDirectory returns a list of files from given s3 folder.
-	DownloadDirectory(ctx context.Context, path string) ([]*File, error)
+	// GetDirectory returns a list of files from given s3 folder.
+	GetDirectory(ctx context.Context, path string) ([]*File, error)
 
-	// DownloadDirectoryWithOptions returns a list of files from given s3 folder with options.
-	DownloadDirectoryWithOptions(ctx context.Context, path string, options minio.GetObjectOptions) ([]*File, error)
+	// GetDirectoryWithOptions returns a list of files from given s3 folder with options.
+	GetDirectoryWithOptions(ctx context.Context, path string, options minio.GetObjectOptions) ([]*File, error)
 
-	// DownloadFileToPath downloads the requested file to the file system under given localPath.
-	DownloadFileToLocalPath(ctx context.Context, path, localPath string) error
+	// DownloadFile downloads the requested file to the file system under given localPath.
+	DownloadFile(ctx context.Context, path, localPath string) error
 
-	// DownloadFileToLocalPathWithOptions downloads the requested file to the file system under given localPath with minio options.
-	DownloadFileToLocalPathWithOptions(ctx context.Context, path, localPath string, options minio.GetObjectOptions) error
+	// DownloadFileWithOptions downloads the requested file to the file system under given localPath with minio options.
+	DownloadFileWithOptions(ctx context.Context, path, localPath string, options minio.GetObjectOptions) error
 
-	// DownloadDirectoryToPath downloads the requested folder to the file system.
+	// DownloadDirectory downloads the requested folder to the file system.
 	// The recursive option also downloads all sub folders.
-	DownloadDirectoryToLocalPath(ctx context.Context, path, localPath string, recursive bool) error
+	DownloadDirectory(ctx context.Context, path, localPath string, recursive bool) error
 
-	// DownloadDirectoryToLocalPathWithOptions downloads the requested folder to the file system with options.
+	// DownloadDirectoryWithOptions downloads the requested folder to the file system with options.
 	// The recursive option also downloads all sub folders.
-	DownloadDirectoryToLocalPathWithOptions(ctx context.Context, path, localPath string, recursive bool, options minio.GetObjectOptions) error
+	DownloadDirectoryWithOptions(ctx context.Context, path, localPath string, recursive bool, options minio.GetObjectOptions) error
 
 	// RemoveFile deletes the file under given s3 path.
 	RemoveFile(ctx context.Context, path string) error

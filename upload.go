@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/url"
-	"time"
 
 	"github.com/minio/minio-go/v7"
 )
@@ -39,38 +37,4 @@ func (c *client) UploadFileWithOptions(ctx context.Context, path string, data io
 	}
 
 	return &info, nil
-}
-
-func (c *client) UploadJSONFileWithLink(
-	ctx context.Context,
-	path string,
-	data io.Reader,
-	linkExpiration time.Duration,
-) (*url.URL, error) {
-	const errMessage = "failed to upload json file: %w"
-
-	_, err := c.minioClient.PutObject(
-		ctx,
-		c.bucketName,
-		path,
-		data,
-		-1,
-		minio.PutObjectOptions{ContentType: "application/json"},
-	)
-	if err != nil {
-		return nil, fmt.Errorf(errMessage, err)
-	}
-
-	u, err := c.minioClient.PresignedGetObject(
-		ctx,
-		c.bucketName,
-		path,
-		linkExpiration,
-		c.urlValues,
-	)
-	if err != nil {
-		return nil, fmt.Errorf(errMessage, err)
-	}
-
-	return u, nil
 }

@@ -51,19 +51,19 @@ func (c *client) GetFileNamesInPath(ctx context.Context, path string, recursive 
 			return nil, obj.Err
 		}
 
-		fileName := strings.TrimPrefix(obj.Key, path)
+		fileName := pathpkg.Base(obj.Key)
 		result = append(result, fileName)
 	}
 
 	return result, nil
 }
 
-func (c *client) DownloadFile(ctx context.Context, path string) (*File, error) {
-	return c.DownloadFileWithOptions(ctx, path, minio.GetObjectOptions{})
+func (c *client) GetFile(ctx context.Context, path string) (*File, error) {
+	return c.GetFileWithOptions(ctx, path, minio.GetObjectOptions{})
 }
 
-func (c *client) DownloadFileWithOptions(ctx context.Context, path string, options minio.GetObjectOptions) (*File, error) {
-	const errMessage = "failed to download file from s3: %w"
+func (c *client) GetFileWithOptions(ctx context.Context, path string, options minio.GetObjectOptions) (*File, error) {
+	const errMessage = "failed to get file from s3: %w"
 
 	object, err := c.minioClient.GetObject(ctx, c.bucketName, path, options)
 	if err != nil {
@@ -94,18 +94,18 @@ func (c *client) DownloadFileWithOptions(ctx context.Context, path string, optio
 		Content:      content,
 		ModifiedDate: fileInfo.LastModified,
 		ContentType:  fileInfo.ContentType,
-		Name:         pathpkg.Base(path),
+		Name:         pathpkg.Base(fileInfo.Key),
 		MetaData:     fileInfo.UserMetadata,
 		Checksum:     fileInfo.ChecksumCRC32C,
 		Length:       fileInfo.Size,
 	}, nil
 }
 
-func (c *client) DownloadFileToLocalPath(ctx context.Context, path, localPath string) error {
-	return c.DownloadFileToLocalPathWithOptions(ctx, path, localPath, minio.GetObjectOptions{})
+func (c *client) DownloadFile(ctx context.Context, path, localPath string) error {
+	return c.DownloadFileWithOptions(ctx, path, localPath, minio.GetObjectOptions{})
 }
 
-func (c *client) DownloadFileToLocalPathWithOptions(ctx context.Context, path, localPath string, options minio.GetObjectOptions) error {
+func (c *client) DownloadFileWithOptions(ctx context.Context, path, localPath string, options minio.GetObjectOptions) error {
 	return c.minioClient.FGetObject( //nolint:wrapcheck
 		ctx,
 		c.bucketName,
@@ -115,12 +115,12 @@ func (c *client) DownloadFileToLocalPathWithOptions(ctx context.Context, path, l
 	)
 }
 
-func (c *client) DownloadDirectory(ctx context.Context, path string) ([]*File, error) {
-	return c.DownloadDirectoryWithOptions(ctx, path, minio.GetObjectOptions{})
+func (c *client) GetDirectory(ctx context.Context, path string) ([]*File, error) {
+	return c.GetDirectoryWithOptions(ctx, path, minio.GetObjectOptions{})
 }
 
-func (c *client) DownloadDirectoryWithOptions(ctx context.Context, path string, options minio.GetObjectOptions) ([]*File, error) {
-	const errMessage = "failed to download directory: %w"
+func (c *client) GetDirectoryWithOptions(ctx context.Context, path string, options minio.GetObjectOptions) ([]*File, error) {
+	const errMessage = "failed to get directory: %w"
 
 	doneCh := make(chan struct{})
 	defer close(doneCh)
@@ -142,7 +142,9 @@ func (c *client) DownloadDirectoryWithOptions(ctx context.Context, path string, 
 		wg.Add(1)
 
 		go func(obj minio.ObjectInfo) {
-			doc, err := c.DownloadFileWithOptions(ctx, obj.Key, options)
+			defer wg.Done()
+
+			doc, err := c.GetFileWithOptions(ctx, obj.Key, options)
 			if err != nil {
 				errCh <- err
 
@@ -150,8 +152,6 @@ func (c *client) DownloadDirectoryWithOptions(ctx context.Context, path string, 
 			}
 
 			result = append(result, doc)
-
-			wg.Done()
 		}(obj)
 	}
 
@@ -170,11 +170,11 @@ func (c *client) DownloadDirectoryWithOptions(ctx context.Context, path string, 
 	return result, nil
 }
 
-func (c *client) DownloadDirectoryToLocalPath(ctx context.Context, path, localPath string, recursive bool) error {
-	return c.DownloadDirectoryToLocalPathWithOptions(ctx, path, localPath, recursive, minio.GetObjectOptions{})
+func (c *client) DownloadDirectory(ctx context.Context, path, localPath string, recursive bool) error {
+	return c.DownloadDirectoryWithOptions(ctx, path, localPath, recursive, minio.GetObjectOptions{})
 }
 
-func (c *client) DownloadDirectoryToLocalPathWithOptions(ctx context.Context, path, localPath string, recursive bool, options minio.GetObjectOptions) error {
+func (c *client) DownloadDirectoryWithOptions(ctx context.Context, path, localPath string, recursive bool, options minio.GetObjectOptions) error {
 	const errMessage = "failed to download files from s3: %w"
 
 	doneCh := make(chan struct{})
@@ -196,14 +196,14 @@ func (c *client) DownloadDirectoryToLocalPathWithOptions(ctx context.Context, pa
 		wg.Add(1)
 
 		go func(obj minio.ObjectInfo) {
+			defer wg.Done()
+
 			fileName := strings.TrimPrefix(obj.Key, path+"/")
 
-			err := c.DownloadFileToLocalPathWithOptions(ctx, obj.Key, localPath+"/"+fileName, options)
+			err := c.DownloadFileWithOptions(ctx, obj.Key, localPath+"/"+fileName, options)
 			if err != nil {
 				errCh <- err
 			}
-
-			wg.Done()
 		}(obj)
 	}
 
