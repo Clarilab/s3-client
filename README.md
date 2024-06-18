@@ -4,12 +4,12 @@ This client is a wrapper around [minio-go](https://github.com/minio/minio-go).
 
 ## Installation
 ```shell
-go get github.com/Clarilab/s3-client/v2
+go get github.com/Clarilab/s3-client/v3
 ```
 
 ## Importing
 ```go
-import "github.com/Clarilab/s3-client/v2"
+import "github.com/Clarilab/s3-client/v3"
 ```
 
 ## Features
