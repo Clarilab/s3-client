@@ -273,6 +273,10 @@ func (c *client) GetObjectWithOptions(ctx context.Context, path string, options 
 	)
 }
 
+func (c *client) GetObjectInfo(ctx context.Context, path string) (*minio.ObjectInfo, error) {
+	return c.minioClient.GetObjectACL(ctx, c.bucketName, path) //nolint:wrapcheck
+}
+
 func (c *client) RemoveFile(ctx context.Context, path string) error {
 	return c.RemoveFileWithOptions(ctx, path, minio.RemoveObjectOptions{})
 }

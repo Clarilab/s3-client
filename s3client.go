@@ -69,6 +69,9 @@ type Client interface {
 	// Don't forget to close the Object.
 	GetObject(ctx context.Context, path string) (*minio.Object, error)
 
+	// GetObjectInfo returns an minio.ObjectInfo for the given s3 path.
+	GetObjectInfo(ctx context.Context, path string) (*minio.ObjectInfo, error)
+
 	// GetObjectWithOptions returns an minio.Object for the given s3 path with minio options.
 	// Don't forget to close the Object.
 	GetObjectWithOptions(ctx context.Context, path string, options ...GetOption) (*minio.Object, error)
