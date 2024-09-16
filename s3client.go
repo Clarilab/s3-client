@@ -37,13 +37,13 @@ type Client interface {
 	GetFile(ctx context.Context, path string) (*File, error)
 
 	// GetFileWithOptions returns the file from given s3 path with options
-	GetFileWithOptions(ctx context.Context, path string, options minio.GetObjectOptions) (*File, error)
+	GetFileWithOptions(ctx context.Context, path string, options ...GetOption) (*File, error)
 
 	// GetDirectory returns a list of files from given s3 folder.
 	GetDirectory(ctx context.Context, path string) ([]*File, error)
 
 	// GetDirectoryWithOptions returns a list of files from given s3 folder with options.
-	GetDirectoryWithOptions(ctx context.Context, path string, options minio.GetObjectOptions) ([]*File, error)
+	GetDirectoryWithOptions(ctx context.Context, path string, options ...GetOption) ([]*File, error)
 
 	// DownloadFile downloads the requested file to the file system under given localPath.
 	DownloadFile(ctx context.Context, path, localPath string) error
@@ -69,7 +69,10 @@ type Client interface {
 	// Don't forget to close the Object.
 	GetObject(ctx context.Context, path string) (*minio.Object, error)
 
+	// GetObjectInfo returns an minio.ObjectInfo for the given s3 path.
+	GetObjectInfo(ctx context.Context, path string) (*minio.ObjectInfo, error)
+
 	// GetObjectWithOptions returns an minio.Object for the given s3 path with minio options.
 	// Don't forget to close the Object.
-	GetObjectWithOptions(ctx context.Context, path string, options minio.GetObjectOptions) (*minio.Object, error)
+	GetObjectWithOptions(ctx context.Context, path string, options ...GetOption) (*minio.Object, error)
 }

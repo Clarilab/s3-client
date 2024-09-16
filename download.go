@@ -59,13 +59,27 @@ func (c *client) GetFileNamesInPath(ctx context.Context, path string, recursive 
 }
 
 func (c *client) GetFile(ctx context.Context, path string) (*File, error) {
-	return c.GetFileWithOptions(ctx, path, minio.GetObjectOptions{})
+	return c.GetFileWithOptions(ctx, path)
 }
 
-func (c *client) GetFileWithOptions(ctx context.Context, path string, options minio.GetObjectOptions) (*File, error) {
+func (c *client) GetFileWithOptions(ctx context.Context, path string, options ...GetOption) (*File, error) {
+	getOpts := new(getOption)
+
+	for i := range options {
+		options[i](getOpts)
+	}
+
+	if getOpts.noContentDownload {
+		return c.getFileWithoutContent(ctx, path)
+	}
+
+	return c.getFileWithContent(ctx, path, getOpts.clientGetOptions)
+}
+
+func (c *client) getFileWithContent(ctx context.Context, path string, clientOptions minio.GetObjectOptions) (*File, error) {
 	const errMessage = "failed to get file from s3: %w"
 
-	object, err := c.minioClient.GetObject(ctx, c.bucketName, path, options)
+	object, err := c.minioClient.GetObject(ctx, c.bucketName, path, clientOptions)
 	if err != nil {
 		return nil, fmt.Errorf(errMessage, err)
 	}
@@ -101,6 +115,24 @@ func (c *client) GetFileWithOptions(ctx context.Context, path string, options mi
 	}, nil
 }
 
+func (c *client) getFileWithoutContent(ctx context.Context, path string) (*File, error) {
+	const errMessage = "failed to get file metadata from s3: %w"
+
+	fileInfo, err := c.minioClient.GetObjectACL(ctx, c.bucketName, path)
+	if err != nil {
+		return nil, fmt.Errorf(errMessage, err)
+	}
+
+	return &File{
+		ModifiedDate: fileInfo.LastModified,
+		ContentType:  fileInfo.ContentType,
+		Name:         pathpkg.Base(fileInfo.Key),
+		MetaData:     fileInfo.UserMetadata,
+		Checksum:     fileInfo.ChecksumCRC32C,
+		Length:       fileInfo.Size,
+	}, nil
+}
+
 func (c *client) DownloadFile(ctx context.Context, path, localPath string) error {
 	return c.DownloadFileWithOptions(ctx, path, localPath, minio.GetObjectOptions{})
 }
@@ -116,10 +148,10 @@ func (c *client) DownloadFileWithOptions(ctx context.Context, path, localPath st
 }
 
 func (c *client) GetDirectory(ctx context.Context, path string) ([]*File, error) {
-	return c.GetDirectoryWithOptions(ctx, path, minio.GetObjectOptions{})
+	return c.GetDirectoryWithOptions(ctx, path)
 }
 
-func (c *client) GetDirectoryWithOptions(ctx context.Context, path string, options minio.GetObjectOptions) ([]*File, error) {
+func (c *client) GetDirectoryWithOptions(ctx context.Context, path string, options ...GetOption) ([]*File, error) {
 	const errMessage = "failed to get directory: %w"
 
 	doneCh := make(chan struct{})
@@ -144,7 +176,7 @@ func (c *client) GetDirectoryWithOptions(ctx context.Context, path string, optio
 		go func(obj minio.ObjectInfo) {
 			defer wg.Done()
 
-			doc, err := c.GetFileWithOptions(ctx, obj.Key, options)
+			doc, err := c.GetFileWithOptions(ctx, obj.Key, options...)
 			if err != nil {
 				errCh <- err
 
@@ -223,16 +255,26 @@ func (c *client) DownloadDirectoryWithOptions(ctx context.Context, path, localPa
 }
 
 func (c *client) GetObject(ctx context.Context, path string) (*minio.Object, error) {
-	return c.GetObjectWithOptions(ctx, path, minio.GetObjectOptions{})
+	return c.GetObjectWithOptions(ctx, path)
 }
 
-func (c *client) GetObjectWithOptions(ctx context.Context, path string, options minio.GetObjectOptions) (*minio.Object, error) {
+func (c *client) GetObjectWithOptions(ctx context.Context, path string, options ...GetOption) (*minio.Object, error) {
+	getOpts := new(getOption)
+
+	for i := range options {
+		options[i](getOpts)
+	}
+
 	return c.minioClient.GetObject( //nolint:wrapcheck
 		ctx,
 		c.bucketName,
 		path,
-		options,
+		getOpts.clientGetOptions,
 	)
+}
+
+func (c *client) GetObjectInfo(ctx context.Context, path string) (*minio.ObjectInfo, error) {
+	return c.minioClient.GetObjectACL(ctx, c.bucketName, path) //nolint:wrapcheck
 }
 
 func (c *client) RemoveFile(ctx context.Context, path string) error {
