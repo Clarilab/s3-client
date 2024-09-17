@@ -18,7 +18,7 @@ const (
 	defaultUploadSize int64 = -1
 )
 
-func (c *client) UploadFile(ctx context.Context, upload Upload, options ...UploadOption) (*UploadInfo, error) {
+func (c *client) UploadFile(ctx context.Context, upload *Upload, options ...UploadOption) (*UploadInfo, error) {
 	const errMessage = "failed to upload file: %w"
 
 	opts := new(uploadOptions)
@@ -28,7 +28,7 @@ func (c *client) UploadFile(ctx context.Context, upload Upload, options ...Uploa
 	}
 
 	size := defaultUploadSize
-	uploadSize := upload.Size()
+	uploadSize := upload.Size
 
 	if uploadSize != nil {
 		size = *uploadSize
@@ -65,11 +65,11 @@ func (c *client) UploadFile(ctx context.Context, upload Upload, options ...Uploa
 		opts.clientOptions.UserMetadata[keyMD5Checksum] = md5
 	}
 
-	for k, v := range upload.MetaData() {
+	for k, v := range upload.MetaData {
 		opts.clientOptions.UserMetadata[k] = v
 	}
 
-	contentType := upload.ContentType()
+	contentType := upload.ContentType
 
 	if contentType != "" {
 		opts.clientOptions.ContentType = contentType
@@ -78,7 +78,7 @@ func (c *client) UploadFile(ctx context.Context, upload Upload, options ...Uploa
 	objInfo, err := c.minioClient.PutObject(
 		ctx,
 		c.bucketName,
-		upload.Path(),
+		upload.Path,
 		upload,
 		size,
 		minio.PutObjectOptions(opts.clientOptions),

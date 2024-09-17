@@ -9,7 +9,7 @@ import (
 // Client holds all callable methods.
 type Client interface {
 	// UploadFile uploads data under a given s3 path.
-	UploadFile(ctx context.Context, upload Upload, options ...UploadOption) (*UploadInfo, error)
+	UploadFile(ctx context.Context, upload *Upload, options ...UploadOption) (*UploadInfo, error)
 
 	// GetFile returns the file from given s3 path.
 	GetFile(ctx context.Context, path string, options ...GetOption) (File, error)
