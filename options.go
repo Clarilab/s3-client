@@ -24,6 +24,26 @@ func WithHealthCheck(interval time.Duration) ClientOption {
 	}
 }
 
+// WithCRC32CIntegritySupport enables or disables CRC32C integrity check support.
+// By default it's enabled.
+func WithCRC32CIntegritySupport(enabled bool) ClientOption {
+	return func(c *client) error {
+		c.useIntegrityCRC32C = enabled
+
+		return nil
+	}
+}
+
+// WithMD5IntegritySupport enables or disables MD5 integrity check support.
+// By default it's disabled.
+func WithMD5IntegritySupport(enabled bool) ClientOption {
+	return func(c *client) error {
+		c.useIntegrityMD5 = enabled
+
+		return nil
+	}
+}
+
 // ClientUploadOptions is an alias for minio.PutObjectOptions.
 type ClientUploadOptions minio.PutObjectOptions
 
@@ -43,6 +63,7 @@ func WithClientUploadOptions(options ClientUploadOptions) UploadOption {
 
 type getOptions struct {
 	clientOptions ClientGetOptions
+	Integrity
 }
 
 // GetOption is an option for getting a file.
@@ -55,6 +76,20 @@ type ClientGetOptions minio.GetObjectOptions
 func WithClientGetOptions(options ClientGetOptions) GetOption {
 	return func(o *getOptions) {
 		o.clientOptions = options
+	}
+}
+
+// WithIntegrityCheckCRC32C checks if the CRC32C checksum of the downloaded file matches the given checksum.
+func WithIntegrityCheckCRC32C(checksum string) GetOption {
+	return func(o *getOptions) {
+		o.ChecksumCRC32C = checksum
+	}
+}
+
+// WithIntegrityCheckMD5 checks if the MD5 checksum of the downloaded file matches the given checksum.
+func WithIntegrityCheckMD5(checksum string) GetOption {
+	return func(o *getOptions) {
+		o.ChecksumMD5 = checksum
 	}
 }
 

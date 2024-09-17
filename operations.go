@@ -34,6 +34,47 @@ func (c *client) UploadFile(ctx context.Context, upload Upload, options ...Uploa
 		size = *uploadSize
 	}
 
+	if opts.clientOptions.UserMetadata == nil {
+		opts.clientOptions.UserMetadata = make(map[string]string)
+	}
+
+	var (
+		crc32c string
+		md5    string
+	)
+
+	if c.useIntegrityCRC32C {
+		checksum, err := getCheckSumCRC32C(upload)
+		if err != nil {
+			return nil, fmt.Errorf(errMessage, err)
+		}
+
+		crc32c = checksum.hex()
+
+		opts.clientOptions.UserMetadata[keyCR32CChecksum] = crc32c
+	}
+
+	if c.useIntegrityMD5 {
+		checksum, err := getCheckSumMD5(upload)
+		if err != nil {
+			return nil, fmt.Errorf(errMessage, err)
+		}
+
+		md5 = checksum.hex()
+
+		opts.clientOptions.UserMetadata[keyMD5Checksum] = md5
+	}
+
+	for k, v := range upload.MetaData() {
+		opts.clientOptions.UserMetadata[k] = v
+	}
+
+	contentType := upload.ContentType()
+
+	if contentType != "" {
+		opts.clientOptions.ContentType = contentType
+	}
+
 	objInfo, err := c.minioClient.PutObject(
 		ctx,
 		c.bucketName,
@@ -48,6 +89,10 @@ func (c *client) UploadFile(ctx context.Context, upload Upload, options ...Uploa
 
 	info := &UploadInfo{
 		Size: objInfo.Size,
+		Integrity: Integrity{
+			ChecksumCRC32C: crc32c,
+			ChecksumMD5:    md5,
+		},
 	}
 
 	return info, nil
@@ -85,6 +130,10 @@ func (c *client) GetFile(ctx context.Context, path string, options ...GetOption)
 		ModifiedDate: objInfo.LastModified,
 	}
 
+	if err = c.handleIntegrity(object, info, opts); err != nil {
+		return nil, fmt.Errorf(errMessage, err)
+	}
+
 	return &file{ReadCloser: object, info: info}, nil
 }
 
@@ -108,6 +157,8 @@ func (c *client) GetFileInfo(ctx context.Context, path string) (*FileInfo, error
 		MetaData:     objInfo.UserMetadata,
 		ModifiedDate: objInfo.LastModified,
 	}
+
+	c.handleGetFileInfoIntegrity(info)
 
 	return info, nil
 }

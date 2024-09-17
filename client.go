@@ -14,6 +14,7 @@ type client struct {
 	bucketName  string
 	urlValues   url.Values
 	cancelFunc  context.CancelFunc
+	integritySettings
 }
 
 // NewClient instantiates a s3.
@@ -27,6 +28,10 @@ func NewClient(details *ClientDetails, options ...ClientOption) (Client, error) 
 	client := &client{
 		bucketName: details.BucketName,
 		urlValues:  make(url.Values),
+		integritySettings: integritySettings{
+			useIntegrityCRC32C: true,
+			useIntegrityMD5:    false,
+		},
 	}
 
 	var err error

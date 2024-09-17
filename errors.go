@@ -16,6 +16,9 @@ var (
 	ErrEmptyBucketName = errors.New("bucket name not specified")
 	// ErrNotFound indicates that the requested file does not exist.
 	ErrNotFound = errors.New("file under specified filepath does not exist")
+	// ErrChecksumMismatch occurs when the checksum of the downloaded file
+	// does not match the expected checksum.
+	ErrChecksumMismatch = errors.New("checksum mismatch")
 )
 
 // BucketDoesNotExistError occurs when the given bucket does not exist.
