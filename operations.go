@@ -109,7 +109,7 @@ func (c *client) GetFile(ctx context.Context, path string, options ...GetOption)
 
 	object, err := c.minioClient.GetObject(ctx, c.bucketName, path, minio.GetObjectOptions(opts.clientOptions))
 	if err != nil {
-		return nil, fmt.Errorf(errMessage, err)
+		return nil, fmt.Errorf(errMessage, handleClientError(err))
 	}
 
 	objInfo, err := object.Stat()
@@ -142,7 +142,7 @@ func (c *client) GetFileInfo(ctx context.Context, path string) (*FileInfo, error
 
 	objInfo, err := c.minioClient.GetObjectACL(ctx, c.bucketName, path)
 	if err != nil {
-		return nil, fmt.Errorf(errMessage, err)
+		return nil, fmt.Errorf(errMessage, handleClientError(err))
 	}
 
 	if objInfo.Err != nil {
@@ -180,7 +180,7 @@ func (c *client) DownloadFile(ctx context.Context, path, localPath string, optio
 		minio.GetObjectOptions(opts.clientOptions),
 	)
 	if err != nil {
-		return fmt.Errorf(errMessage, err)
+		return fmt.Errorf(errMessage, handleClientError(err))
 	}
 
 	return nil
@@ -364,20 +364,27 @@ func (c *client) RemoveFile(ctx context.Context, path string, options ...RemoveO
 	}
 
 	if err := c.minioClient.RemoveObject(ctx, c.bucketName, path, minio.RemoveObjectOptions(opts.clientOptions)); err != nil {
-		return fmt.Errorf(errMessage, err)
+		return fmt.Errorf(errMessage, handleClientError(err))
 	}
 
 	return nil
 }
 
 func (c *client) CreateFileLink(ctx context.Context, path string, expiration time.Duration) (*url.URL, error) {
-	return c.minioClient.PresignedGetObject( //nolint:wrapcheck
+	const errMessage = "failed to create file link: %w"
+
+	link, err := c.minioClient.PresignedGetObject(
 		ctx,
 		c.bucketName,
 		path,
 		expiration,
 		c.urlValues,
 	)
+	if err != nil {
+		return nil, fmt.Errorf(errMessage, handleClientError(err))
+	}
+
+	return link, nil
 }
 
 func (c *client) AddLifeCycleRule(ctx context.Context, ruleID, folderPath string, daysToExpiry int) error {
@@ -404,7 +411,7 @@ func (c *client) AddLifeCycleRule(ctx context.Context, ruleID, folderPath string
 		},
 	})
 	if err != nil {
-		return fmt.Errorf(errMessage, err)
+		return fmt.Errorf(errMessage, handleClientError(err))
 	}
 
 	return nil

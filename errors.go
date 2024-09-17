@@ -3,6 +3,8 @@ package s3
 import (
 	"errors"
 	"fmt"
+
+	"github.com/minio/minio-go/v7"
 )
 
 var (
@@ -39,4 +41,21 @@ type DownloadingFilesFailedError struct {
 // DownloadingFilesFailedError implements the error interface.
 func (e *DownloadingFilesFailedError) Error() string {
 	return fmt.Sprintf("failed to download files from s3: %v", e.errs)
+}
+
+func handleClientError(err error) error {
+	const notFound = "NoSuchKey"
+
+	var minioResponse minio.ErrorResponse
+
+	if errors.As(err, &minioResponse) {
+		switch minioResponse.Code {
+		case notFound:
+			return ErrNotFound
+		default:
+			return err
+		}
+	}
+
+	return err
 }
