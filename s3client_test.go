@@ -30,26 +30,31 @@ const (
 	testFile2Name = "test-file-2.txt"
 
 	headerFileName = "Filename"
+
+	contentType    = "text/plain"
+	testDataFolder = "testdata"
 )
 
 //go:embed testdata
 var testData embed.FS
 
 var (
-	s3Client    s3.Client
+	s3URL       string
 	minioClient *minio.Client
 )
 
 func TestMain(m *testing.M) {
-	s3Client, minioClient = setupTestClients(bucketName)
-
-	defer s3Client.Close()
+	s3URL, minioClient = setupTestEnvironment(bucketName)
 
 	m.Run()
 }
 
 func Test_File(t *testing.T) {
+	t.Parallel()
+
 	const folder = "test-file"
+
+	s3Client := getS3Client(t, s3.WithCRC32CIntegritySupport(false))
 
 	uploaded := uploadTestFile(t, folder, testFile1Name)
 
@@ -71,6 +76,10 @@ func Test_File(t *testing.T) {
 }
 
 func Test_UploadFile(t *testing.T) {
+	t.Parallel()
+
+	s3Client := getS3Client(t, s3.WithCRC32CIntegritySupport(false))
+
 	testFile, err := testData.ReadFile("testdata" + "/" + testFile1Name)
 	require.NoError(t, err)
 
@@ -79,6 +88,8 @@ func Test_UploadFile(t *testing.T) {
 	folder := "test-upload-file"
 
 	t.Run("upload file", func(t *testing.T) {
+		t.Parallel()
+
 		fileName := uuid.NewString()
 		filePath := folder + "/" + fileName
 
@@ -93,6 +104,8 @@ func Test_UploadFile(t *testing.T) {
 	})
 
 	t.Run("upload file with options", func(t *testing.T) {
+		t.Parallel()
+
 		fileName := uuid.NewString()
 		filePath := folder + "/" + fileName
 
@@ -108,11 +121,17 @@ func Test_UploadFile(t *testing.T) {
 }
 
 func Test_GetFile(t *testing.T) {
+	t.Parallel()
+
 	const folder = "test-get-file"
+
+	s3Client := getS3Client(t, s3.WithCRC32CIntegritySupport(false))
 
 	uploaded := uploadTestFile(t, folder, testFile1Name)
 
 	t.Run("get file", func(t *testing.T) {
+		t.Parallel()
+
 		file, err := s3Client.GetFile(context.Background(), uploaded.filePath)
 		require.NoError(t, err)
 
@@ -130,6 +149,8 @@ func Test_GetFile(t *testing.T) {
 	})
 
 	t.Run("get file with options", func(t *testing.T) {
+		t.Parallel()
+
 		file, err := s3Client.GetFile(context.Background(), uploaded.filePath, s3.WithClientGetOptions(s3.ClientGetOptions{}))
 		require.NoError(t, err)
 
@@ -148,7 +169,11 @@ func Test_GetFile(t *testing.T) {
 }
 
 func Test_GetFileInfo(t *testing.T) {
+	t.Parallel()
+
 	const folder = "test-get-file-info"
+
+	s3Client := getS3Client(t, s3.WithCRC32CIntegritySupport(false))
 
 	uploaded := uploadTestFile(t, folder, testFile1Name)
 
@@ -163,12 +188,18 @@ func Test_GetFileInfo(t *testing.T) {
 }
 
 func Test_GetDirectory(t *testing.T) {
+	t.Parallel()
+
 	const folder = "test-get-directory"
 
 	uploaded1 := uploadTestFile(t, folder, testFile1Name)
 	uploaded2 := uploadTestFile(t, folder, testFile2Name)
 
+	s3Client := getS3Client(t, s3.WithCRC32CIntegritySupport(false))
+
 	t.Run("get directory", func(t *testing.T) {
+		t.Parallel()
+
 		files, err := s3Client.GetDirectory(context.Background(), folder)
 		require.NoError(t, err)
 
@@ -201,6 +232,8 @@ func Test_GetDirectory(t *testing.T) {
 	})
 
 	t.Run("get directory with options", func(t *testing.T) {
+		t.Parallel()
+
 		files, err := s3Client.GetDirectory(context.Background(), folder, s3.WithClientGetOptions(s3.ClientGetOptions{}))
 		require.NoError(t, err)
 
@@ -234,7 +267,11 @@ func Test_GetDirectory(t *testing.T) {
 }
 
 func Test_GetDirectoryInfos(t *testing.T) {
-	const folder = "test-get-directory-infos"
+	t.Parallel()
+
+	const folder = "-infos"
+
+	s3Client := getS3Client(t, s3.WithCRC32CIntegritySupport(false))
 
 	uploaded1 := uploadTestFile(t, folder, testFile1Name)
 	uploaded2 := uploadTestFile(t, folder, testFile2Name)
@@ -264,7 +301,14 @@ func Test_GetDirectoryInfos(t *testing.T) {
 }
 
 func Test_DownloadFile(t *testing.T) {
-	localFolder := "testdata/temp-download-file"
+	t.Parallel()
+
+	const (
+		folder      = "test-download-file"
+		localFolder = "testdata/temp-download-file"
+	)
+
+	s3Client := getS3Client(t, s3.WithCRC32CIntegritySupport(false))
 
 	t.Cleanup(func() {
 		err := os.RemoveAll(localFolder)
@@ -272,7 +316,7 @@ func Test_DownloadFile(t *testing.T) {
 	})
 
 	t.Run("download file", func(t *testing.T) {
-		const folder = "test-download-file"
+		t.Parallel()
 
 		uploaded := uploadTestFile(t, folder, testFile1Name)
 
@@ -288,6 +332,8 @@ func Test_DownloadFile(t *testing.T) {
 	})
 
 	t.Run("download file with options", func(t *testing.T) {
+		t.Parallel()
+
 		const folder = "test-download-file"
 
 		uploaded := uploadTestFile(t, folder, testFile1Name)
@@ -305,7 +351,14 @@ func Test_DownloadFile(t *testing.T) {
 }
 
 func Test_DownloadDirectory(t *testing.T) {
-	localFolder := "testdata/temp-download-directory"
+	t.Parallel()
+
+	const (
+		folder      = "test-download-directory"
+		localFolder = "testdata/temp-download-directory"
+	)
+
+	s3Client := getS3Client(t, s3.WithCRC32CIntegritySupport(false))
 
 	t.Cleanup(func() {
 		err := os.RemoveAll(localFolder)
@@ -313,7 +366,7 @@ func Test_DownloadDirectory(t *testing.T) {
 	})
 
 	t.Run("download file", func(t *testing.T) {
-		const folder = "test-download-directory"
+		t.Parallel()
 
 		uploaded1 := uploadTestFile(t, folder, testFile1Name)
 		uploaded2 := uploadTestFile(t, folder, testFile2Name)
@@ -344,9 +397,15 @@ func Test_DownloadDirectory(t *testing.T) {
 }
 
 func Test_RemoveFile(t *testing.T) {
+	t.Parallel()
+
 	const folder = "test-remove-file"
 
+	s3Client := getS3Client(t, s3.WithCRC32CIntegritySupport(false))
+
 	t.Run("remove file", func(t *testing.T) {
+		t.Parallel()
+
 		uploaded := uploadTestFile(t, folder, testFile1Name)
 
 		err := s3Client.RemoveFile(context.Background(), uploaded.filePath)
@@ -358,6 +417,8 @@ func Test_RemoveFile(t *testing.T) {
 	})
 
 	t.Run("remove file with options", func(t *testing.T) {
+		t.Parallel()
+
 		uploaded := uploadTestFile(t, folder, testFile1Name)
 
 		err := s3Client.RemoveFile(context.Background(), uploaded.filePath, s3.WithClientRemoveOptions(s3.ClientRemoveOptions{}))
@@ -370,10 +431,14 @@ func Test_RemoveFile(t *testing.T) {
 }
 
 func Test_CreateFileLink(t *testing.T) {
+	t.Parallel()
+
 	const (
 		expiration = time.Second * 2
 		folder     = "test-create-file-link"
 	)
+
+	s3Client := getS3Client(t, s3.WithCRC32CIntegritySupport(false))
 
 	uploaded := uploadTestFile(t, folder, testFile1Name)
 
@@ -417,11 +482,6 @@ type uploaded struct {
 func uploadTestFile(t *testing.T, s3Folder, testFileName string) *uploaded {
 	t.Helper()
 
-	const (
-		contentType    = "text/plain"
-		testDataFolder = "testdata"
-	)
-
 	content, err := testData.ReadFile(testDataFolder + "/" + testFileName)
 	require.NoError(t, err)
 
@@ -453,7 +513,7 @@ func uploadTestFile(t *testing.T, s3Folder, testFileName string) *uploaded {
 	return uploaded
 }
 
-func setupTestClients(bucketName string) (s3.Client, *minio.Client) {
+func setupTestEnvironment(bucketName string) (string, *minio.Client) {
 	const (
 		imageTag          = "quay.io/minio/minio:latest"
 		minioPort         = 9000
@@ -488,18 +548,24 @@ func setupTestClients(bucketName string) (s3.Client, *minio.Client) {
 		panic(err)
 	}
 
+	return net.JoinHostPort(container.Host, strconv.Itoa(container.DefaultPort())), minioClient
+}
+
+func getS3Client(t *testing.T, options ...s3.ClientOption) s3.Client {
+	t.Helper()
+
 	clientDetails := &s3.ClientDetails{
-		Host:         net.JoinHostPort(container.Host, strconv.Itoa(container.DefaultPort())),
+		Host:         s3URL,
 		AccessKey:    s3User,
 		AccessSecret: s3Pwd,
 		BucketName:   bucketName,
 		Secure:       false,
 	}
 
-	s3Client, err := s3.NewClient(clientDetails)
-	if err != nil {
-		panic(err)
-	}
+	s3Client, err := s3.NewClient(clientDetails, options...)
+	require.NoError(t, err)
 
-	return s3Client, minioClient
+	t.Cleanup(s3Client.Close)
+
+	return s3Client
 }
