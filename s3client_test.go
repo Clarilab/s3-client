@@ -234,7 +234,7 @@ func Test_GetDirectory(t *testing.T) {
 	t.Run("get directory with options", func(t *testing.T) {
 		t.Parallel()
 
-		files, err := s3Client.GetDirectory(context.Background(), folder, s3.WithClientGetOptions(s3.ClientGetOptions{}))
+		files, err := s3Client.GetDirectory(context.Background(), folder, s3.WithGetDirectoryClientGetOptions(s3.ClientGetOptions{}))
 		require.NoError(t, err)
 
 		require.Len(t, files, 2)

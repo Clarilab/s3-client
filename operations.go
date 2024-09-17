@@ -186,8 +186,14 @@ func (c *client) DownloadFile(ctx context.Context, path, localPath string, optio
 	return nil
 }
 
-func (c *client) GetDirectory(ctx context.Context, path string, options ...GetOption) ([]File, error) {
+func (c *client) GetDirectory(ctx context.Context, path string, options ...GetDirectoryOption) ([]File, error) {
 	const errMessage = "failed to get directory: %w"
+
+	getDirectoryOptions := new(getDirectoryOptions)
+
+	for i := range options {
+		options[i](getDirectoryOptions)
+	}
 
 	doneCh := make(chan struct{})
 	defer close(doneCh)
@@ -213,7 +219,11 @@ func (c *client) GetDirectory(ctx context.Context, path string, options ...GetOp
 		go func(info minio.ObjectInfo) {
 			defer wg.Done()
 
-			doc, err := c.GetFile(ctx, info.Key, options...)
+			doc, err := c.GetFile(
+				ctx,
+				info.Key,
+				[]GetOption{WithClientGetOptions(getDirectoryOptions.clientOptions)}...,
+			)
 			if err != nil {
 				errCh <- err
 

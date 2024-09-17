@@ -93,6 +93,20 @@ func WithIntegrityCheckMD5(checksum string) GetOption {
 	}
 }
 
+type getDirectoryOptions struct {
+	clientOptions ClientGetOptions
+}
+
+// GetOption is an option for getting a file.
+type GetDirectoryOption func(*getDirectoryOptions)
+
+// WithGetDirectoryClientGetOptions sets client options for the get directory request.
+func WithGetDirectoryClientGetOptions(options ClientGetOptions) GetDirectoryOption {
+	return func(o *getDirectoryOptions) {
+		o.clientOptions = options
+	}
+}
+
 type downloadOptions struct {
 	clientOptions ClientGetOptions
 }

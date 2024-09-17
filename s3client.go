@@ -18,7 +18,7 @@ type Client interface {
 	GetFileInfo(ctx context.Context, path string) (*FileInfo, error)
 
 	// GetDirectory returns a list of files from given s3 folder.
-	GetDirectory(ctx context.Context, path string, options ...GetOption) ([]File, error)
+	GetDirectory(ctx context.Context, path string, options ...GetDirectoryOption) ([]File, error)
 
 	// GetDirectoryInfos returns a list of file infos for all files from given s3 folder.
 	GetDirectoryInfos(ctx context.Context, path string) ([]*FileInfo, error)
