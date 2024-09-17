@@ -49,6 +49,106 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
+func Test_Client(t *testing.T) {
+	t.Parallel()
+
+	t.Run("new client", func(t *testing.T) {
+		t.Parallel()
+
+		details := &s3.ClientDetails{
+			Host:         s3URL,
+			AccessKey:    s3User,
+			AccessSecret: s3Pwd,
+			BucketName:   bucketName,
+			Secure:       false,
+		}
+
+		client, err := s3.NewClient(details)
+		require.NoError(t, err)
+
+		client.Close()
+	})
+
+	t.Run("empty host", func(t *testing.T) {
+		t.Parallel()
+
+		details := &s3.ClientDetails{
+			Host:         "",
+			AccessKey:    s3User,
+			AccessSecret: s3Pwd,
+			BucketName:   bucketName,
+			Secure:       false,
+		}
+
+		_, err := s3.NewClient(details)
+		require.ErrorIs(t, err, s3.ErrEmptyHost)
+	})
+
+	t.Run("empty access key", func(t *testing.T) {
+		t.Parallel()
+
+		details := &s3.ClientDetails{
+			Host:         s3URL,
+			AccessKey:    "",
+			AccessSecret: s3Pwd,
+			BucketName:   bucketName,
+			Secure:       false,
+		}
+
+		_, err := s3.NewClient(details)
+		require.ErrorIs(t, err, s3.ErrEmptyAccessKey)
+	})
+
+	t.Run("empty access secret", func(t *testing.T) {
+		t.Parallel()
+
+		details := &s3.ClientDetails{
+			Host:         s3URL,
+			AccessKey:    s3User,
+			AccessSecret: "",
+			BucketName:   bucketName,
+			Secure:       false,
+		}
+
+		_, err := s3.NewClient(details)
+		require.ErrorIs(t, err, s3.ErrEmptyAccessSecret)
+	})
+
+	t.Run("empty bucket name", func(t *testing.T) {
+		t.Parallel()
+
+		details := &s3.ClientDetails{
+			Host:         s3URL,
+			AccessKey:    s3User,
+			AccessSecret: s3Pwd,
+			BucketName:   "",
+			Secure:       false,
+		}
+
+		_, err := s3.NewClient(details)
+		require.ErrorIs(t, err, s3.ErrEmptyBucketName)
+	})
+
+	t.Run("is online", func(t *testing.T) {
+		t.Parallel()
+
+		details := &s3.ClientDetails{
+			Host:         s3URL,
+			AccessKey:    s3User,
+			AccessSecret: s3Pwd,
+			BucketName:   bucketName,
+			Secure:       false,
+		}
+
+		client, err := s3.NewClient(details, s3.WithHealthCheck(time.Second))
+		require.NoError(t, err)
+
+		require.True(t, client.IsOnline())
+
+		client.Close()
+	})
+}
+
 func Test_File(t *testing.T) {
 	t.Parallel()
 
