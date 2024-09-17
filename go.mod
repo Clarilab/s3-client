@@ -1,4 +1,4 @@
-module github.com/Clarilab/s3-client/v3
+module github.com/Clarilab/s3-client/v4
 
 go 1.22.4
 

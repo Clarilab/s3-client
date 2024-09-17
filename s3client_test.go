@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Clarilab/s3-client/v3"
+	"github.com/Clarilab/s3-client/v4"
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"

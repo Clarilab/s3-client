@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Clarilab/s3-client/v3"
+	"github.com/Clarilab/s3-client/v4"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
