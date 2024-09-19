@@ -2,14 +2,11 @@ package s3
 
 import (
 	"context"
-	"encoding/xml"
 	"fmt"
 	"net/url"
-	"strings"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
-	"github.com/minio/minio-go/v7/pkg/lifecycle"
 )
 
 type client struct {
@@ -17,21 +14,31 @@ type client struct {
 	bucketName  string
 	urlValues   url.Values
 	cancelFunc  context.CancelFunc
+	integritySettings
 }
 
 // NewClient instantiates a s3.
-func NewClient(ctx context.Context, s3URL, accessKey, accessSecret, bucketName string, secure bool, options ...Option) (Client, error) {
+func NewClient(details *ClientDetails, options ...ClientOption) (Client, error) {
 	const errMessage = "failed to create s3 client: %w"
+
+	if err := details.validate(); err != nil {
+		return nil, fmt.Errorf(errMessage, err)
+	}
+
 	client := &client{
-		bucketName: bucketName,
+		bucketName: details.BucketName,
 		urlValues:  make(url.Values),
+		integritySettings: integritySettings{
+			useIntegrityCRC32C: true,
+			useIntegrityMD5:    false,
+		},
 	}
 
 	var err error
 
-	client.minioClient, err = minio.New(s3URL, &minio.Options{
-		Creds:  credentials.NewStaticV4(accessKey, accessSecret, ""),
-		Secure: secure,
+	client.minioClient, err = minio.New(details.Host, &minio.Options{
+		Creds:  credentials.NewStaticV4(details.AccessKey, details.AccessSecret, ""),
+		Secure: details.Secure,
 	})
 	if err != nil {
 		return nil, fmt.Errorf(errMessage, err)
@@ -43,13 +50,16 @@ func NewClient(ctx context.Context, s3URL, accessKey, accessSecret, bucketName s
 		}
 	}
 
-	exists, err := client.minioClient.BucketExists(ctx, bucketName)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	exists, err := client.minioClient.BucketExists(ctx, details.BucketName)
 	if err != nil {
 		return nil, fmt.Errorf(errMessage, err)
 	}
 
 	if !exists {
-		return nil, fmt.Errorf(errMessage, &BucketDoesNotExistError{bucketName})
+		return nil, fmt.Errorf(errMessage, &BucketDoesNotExistError{details.BucketName})
 	}
 
 	client.urlValues.Set("response-content-disposition", "inline")
@@ -65,31 +75,4 @@ func (c *client) Close() {
 
 func (c *client) IsOnline() bool {
 	return c.minioClient.IsOnline()
-}
-
-func (c *client) AddLifeCycleRule(ctx context.Context, ruleID, folderPath string, daysToExpiry int) error {
-	const errMessage = "failed to add lifecycle rule: %w"
-
-	if !strings.HasSuffix(folderPath, "/") {
-		folderPath += "/"
-	}
-
-	err := c.minioClient.SetBucketLifecycle(ctx, c.bucketName, &lifecycle.Configuration{
-		XMLName: xml.Name{},
-		Rules: []lifecycle.Rule{
-			{
-				ID: ruleID,
-				Expiration: lifecycle.Expiration{
-					Days: lifecycle.ExpirationDays(daysToExpiry),
-				},
-				Prefix: folderPath,
-				Status: "Enabled",
-			},
-		},
-	})
-	if err != nil {
-		return fmt.Errorf(errMessage, err)
-	}
-
-	return nil
 }
