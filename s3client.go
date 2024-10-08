@@ -44,4 +44,10 @@ type Client interface {
 
 	// IsOnline reports true if the client is online. If the health-check has not been enabled this will always return true.
 	IsOnline() bool
+
+	// IsHealthy reports true if the client is online. If the health-check has not been enabled this will always return true.
+	IsHealthy() bool
+
+	// GetName returns the name of the client.
+	GetName() string
 }

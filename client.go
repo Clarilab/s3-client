@@ -9,6 +9,8 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
+const name = "s3"
+
 type client struct {
 	minioClient *minio.Client
 	bucketName  string
@@ -50,10 +52,7 @@ func NewClient(details *ClientDetails, options ...ClientOption) (Client, error) 
 		}
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	exists, err := client.minioClient.BucketExists(ctx, details.BucketName)
+	exists, err := client.minioClient.BucketExists(context.Background(), details.BucketName)
 	if err != nil {
 		return nil, fmt.Errorf(errMessage, err)
 	}
@@ -75,4 +74,12 @@ func (c *client) Close() {
 
 func (c *client) IsOnline() bool {
 	return c.minioClient.IsOnline()
+}
+
+func (c *client) IsHealthy() bool {
+	return c.IsOnline()
+}
+
+func (c *client) GetName() string {
+	return name
 }
