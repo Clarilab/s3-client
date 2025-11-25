@@ -3,29 +3,17 @@ package testutils
 import (
 	"context"
 	"fmt"
-	"net"
-	"strconv"
 
 	"github.com/Clarilab/s3-client/v4"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
-	"github.com/orlangure/gnomock"
+	"github.com/testcontainers/testcontainers-go"
+	miniocontainer "github.com/testcontainers/testcontainers-go/modules/minio"
 )
 
 const (
-	user      = "admin"
-	passwd    = "password"
-	imageTag  = "quay.io/minio/minio:latest"
-	minioPort = 9000
-
-	userEnv    = "MINIO_ROOT_USER=" + user
-	userPasswd = "MINIO_ROOT_PASSWORD=" + passwd
-	command    = "server"
-	arg        = "/data"
+	DefaultImage = "quay.io/minio/minio:latest"
 )
-
-// StopFunc is a function to stop the created container.
-type StopFunc func() error
 
 // NewClient starts a container with a running MinIO instance
 // and returns a new s3.Client, a function to stop the container on purpose and an error.
@@ -33,26 +21,30 @@ type StopFunc func() error
 // Notes:
 // Only meant to be used for testing purposes.
 // Host MUST have a docker engine running.
-func NewClient(bucketName string, options ...s3.ClientOption) (s3.Client, StopFunc, error) {
+func NewClient(ctx context.Context, bucketName string, options ...Option) (s3.Client, testcontainers.Container, error) {
 	const errMessage = "failed to create new client: %w"
 
-	container, err := gnomock.StartCustom(
-		imageTag,
-		gnomock.DefaultTCP(minioPort),
-		gnomock.WithUseLocalImagesFirst(),
-		gnomock.WithEnv(userEnv),
-		gnomock.WithEnv(userPasswd),
-		gnomock.WithCommand(command, arg),
-	)
+	opts := containerOptions{
+		image: DefaultImage,
+	}
+
+	for i := range options {
+		options[i](&opts)
+	}
+
+	container, err := miniocontainer.Run(ctx, opts.image, opts.customizers...)
 	if err != nil {
 		return nil, nil, fmt.Errorf(errMessage, err)
 	}
 
-	url := net.JoinHostPort(container.Host, strconv.Itoa(container.DefaultPort()))
+	url, err := container.ConnectionString(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf(errMessage, err)
+	}
 
 	minioClient, err := minio.New(url, &minio.Options{
 		Secure: false,
-		Creds:  credentials.NewStaticV4(user, passwd, ""),
+		Creds:  credentials.NewStaticV4(container.Username, container.Password, ""),
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf(errMessage, err)
@@ -65,16 +57,23 @@ func NewClient(bucketName string, options ...s3.ClientOption) (s3.Client, StopFu
 	conn, err := s3.NewClient(
 		&s3.ClientDetails{
 			Host:         url,
-			AccessKey:    user,
-			AccessSecret: passwd,
+			AccessKey:    container.Username,
+			AccessSecret: container.Password,
 			BucketName:   bucketName,
 			Secure:       false,
 		},
-		options...,
+		opts.s3Options...,
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf(errMessage, err)
 	}
 
-	return conn, func() error { return gnomock.Stop(container) }, nil
+	return conn, container, nil
+}
+
+// NewContainer runs a container with a running MinIO instance.
+//
+// Notes: Only meant to be used for testing purposes. Host MUST have a docker engine running.
+func NewContainer(ctx context.Context, image string, customizers ...testcontainers.ContainerCustomizer) (*miniocontainer.MinioContainer, error) {
+	return miniocontainer.Run(ctx, image, customizers...)
 }
