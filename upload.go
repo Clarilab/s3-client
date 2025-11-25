@@ -1,4 +1,4 @@
-package s3
+package s3 //nolint:revive // package name matches folder name
 
 import "io"
 

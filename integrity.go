@@ -1,4 +1,4 @@
-package s3
+package s3 //nolint:revive // package name matches folder name
 
 import (
 	"crypto/md5" //nolint:gosec // intended to use MD5 for hashing

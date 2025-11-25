@@ -1,29 +1,26 @@
-package s3_test
+package s3_test //nolint:revive // package name matches folder name
 
 import (
 	"bytes"
 	"context"
 	"embed"
 	"io"
-	"net"
 	"net/http"
 	"os"
 	"reflect"
-	"strconv"
 	"testing"
 	"time"
 
 	"github.com/Clarilab/s3-client/v4"
+	"github.com/Clarilab/s3-client/v4/testutils"
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
-	"github.com/orlangure/gnomock"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
 )
 
 const (
-	s3User     = "admin"
-	s3Pwd      = "password"
 	bucketName = "test-bucket"
 
 	testFile1Name = "test-file-1.txt"
@@ -40,11 +37,29 @@ var testData embed.FS
 
 var (
 	s3URL       string
+	s3User      string
+	s3Pwd       string
 	minioClient *minio.Client
 )
 
 func TestMain(m *testing.M) {
-	s3URL, minioClient = setupTestEnvironment(bucketName)
+	ctx := context.Background()
+
+	env, err := setupTestEnvironment(ctx, bucketName)
+	if err != nil {
+		panic(err)
+	}
+
+	defer func() {
+		if err := env.container.Terminate(ctx); err != nil {
+			panic(err)
+		}
+	}()
+
+	s3URL = env.s3URL
+	s3User = env.s3User
+	s3Pwd = env.s3Pwd
+	minioClient = env.minioClient
 
 	m.Run()
 }
@@ -613,42 +628,47 @@ func uploadTestFile(t *testing.T, s3Folder, testFileName string) *uploaded {
 	return uploaded
 }
 
-func setupTestEnvironment(bucketName string) (string, *minio.Client) {
-	const (
-		imageTag          = "quay.io/minio/minio:latest"
-		minioPort         = 9000
-		envKeyRootUser    = "MINIO_ROOT_USER="
-		envKeyRootUserPwd = "MINIO_ROOT_PASSWORD="
-		command           = "server"
-		commandArg        = "/data"
-	)
+type testEnvironment struct {
+	s3URL       string
+	s3User      string
+	s3Pwd       string
+	container   testcontainers.Container
+	minioClient *minio.Client
+}
 
-	container, err := gnomock.StartCustom(
-		imageTag,
-		gnomock.DefaultTCP(minioPort),
-		gnomock.WithUseLocalImagesFirst(),
-		gnomock.WithEnv(envKeyRootUser+s3User),
-		gnomock.WithEnv(envKeyRootUserPwd+s3Pwd),
-		gnomock.WithCommand(command, commandArg),
-	)
+func setupTestEnvironment(ctx context.Context, bucketName string) (*testEnvironment, error) {
+	container, err := testutils.NewContainer(ctx, testutils.DefaultImage)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	minioClient, err := minio.New(net.JoinHostPort(container.Host, strconv.Itoa(container.DefaultPort())), &minio.Options{
+	cs, err := container.ConnectionString(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	minioClient, err := minio.New(cs, &minio.Options{
 		Secure: false,
-		Creds:  credentials.NewStaticV4(s3User, s3Pwd, ""),
+		Creds:  credentials.NewStaticV4(container.Username, container.Password, ""),
 	})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	err = minioClient.MakeBucket(context.Background(), bucketName, minio.MakeBucketOptions{})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return net.JoinHostPort(container.Host, strconv.Itoa(container.DefaultPort())), minioClient
+	result := testEnvironment{
+		s3URL:       cs,
+		s3User:      container.Username,
+		s3Pwd:       container.Password,
+		container:   container,
+		minioClient: minioClient,
+	}
+
+	return &result, nil
 }
 
 func getS3Client(t *testing.T, options ...s3.ClientOption) s3.Client {

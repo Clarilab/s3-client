@@ -1,4 +1,4 @@
-package s3
+package s3 //nolint:revive // package name matches folder name
 
 import (
 	"errors"
@@ -38,7 +38,7 @@ type DownloadingFilesFailedError struct {
 	errs []error
 }
 
-// DownloadingFilesFailedError implements the error interface.
+// Error implements the error interface.
 func (e *DownloadingFilesFailedError) Error() string {
 	return fmt.Sprintf("failed to download files from s3: %v", e.errs)
 }
