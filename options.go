@@ -1,4 +1,4 @@
-package s3
+package s3 //nolint:revive // package name matches folder name
 
 import (
 	"fmt"
@@ -97,7 +97,7 @@ type getDirectoryOptions struct {
 	clientOptions ClientGetOptions
 }
 
-// GetOption is an option for getting a file.
+// GetDirectoryOption is an option for getting a file.
 type GetDirectoryOption func(*getDirectoryOptions)
 
 // WithGetDirectoryClientGetOptions sets client options for the get directory request.
@@ -114,7 +114,7 @@ type downloadOptions struct {
 // DownloadOption is an option for downloading a file.
 type DownloadOption func(*downloadOptions)
 
-// WithClientGetOptions sets client options for the get request.
+// WithClientDownloadOptions sets client options for the download request.
 func WithClientDownloadOptions(options ClientGetOptions) DownloadOption {
 	return func(o *downloadOptions) {
 		o.clientOptions = options
@@ -128,10 +128,10 @@ type removeOptions struct {
 	clientOptions ClientRemoveOptions
 }
 
-// UploadOption is an option for uploading a file.
+// RemoveOption is an option for removing a file.
 type RemoveOption func(*removeOptions)
 
-// WithClientUploadOptions sets client options for the upload request.
+// WithClientRemoveOptions sets client options for the remove request.
 func WithClientRemoveOptions(options ClientRemoveOptions) RemoveOption {
 	return func(o *removeOptions) {
 		o.clientOptions = options

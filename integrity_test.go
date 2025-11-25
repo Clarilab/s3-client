@@ -1,4 +1,4 @@
-package s3_test
+package s3_test //nolint:revive // package name matches folder name
 
 import (
 	"bytes"

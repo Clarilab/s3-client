@@ -1,4 +1,4 @@
-package s3
+package s3 //nolint:revive // package name matches folder name
 
 import (
 	"context"
@@ -7,6 +7,8 @@ import (
 )
 
 // Client holds all callable methods.
+//
+//nolint:interfacebloat // intended
 type Client interface {
 	// UploadFile uploads data under a given s3 path.
 	UploadFile(ctx context.Context, upload *Upload, options ...UploadOption) (*UploadInfo, error)

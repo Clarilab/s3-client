@@ -1,9 +1,10 @@
-package s3
+package s3 //nolint:revive // package name matches folder name
 
 import (
 	"context"
 	"encoding/xml"
 	"fmt"
+	"maps"
 	"net/url"
 	pathpkg "path"
 	"strings"
@@ -65,9 +66,7 @@ func (c *client) UploadFile(ctx context.Context, upload *Upload, options ...Uplo
 		opts.clientOptions.UserMetadata[keyMD5Checksum] = md5
 	}
 
-	for k, v := range upload.MetaData {
-		opts.clientOptions.UserMetadata[k] = v
-	}
+	maps.Copy(opts.clientOptions.UserMetadata, upload.MetaData)
 
 	contentType := upload.ContentType
 
@@ -231,7 +230,9 @@ func (c *client) GetDirectory(ctx context.Context, path string, options ...GetDi
 			}
 
 			mtx.Lock()
+
 			result = append(result, doc)
+
 			mtx.Unlock()
 		}(objInfo)
 	}
@@ -286,7 +287,9 @@ func (c *client) GetDirectoryInfos(ctx context.Context, path string) ([]*FileInf
 			}
 
 			mtx.Lock()
+
 			result = append(result, fileInfo)
+
 			mtx.Unlock()
 		}(objInfo)
 	}
