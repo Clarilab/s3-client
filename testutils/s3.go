@@ -12,15 +12,13 @@ import (
 )
 
 const (
+	// DefaultImage is the default MinIO container image.
 	DefaultImage = "quay.io/minio/minio:latest"
 )
 
-// NewClient starts a container with a running MinIO instance
-// and returns a new s3.Client, a function to stop the container on purpose and an error.
+// NewClient starts a container with a running MinIO instance and returns a new s3.Client, the container and an error.
 //
-// Notes:
-// Only meant to be used for testing purposes.
-// Host MUST have a docker engine running.
+// Notes: Only meant to be used for testing purposes. Host MUST have a docker engine running.
 func NewClient(ctx context.Context, bucketName string, options ...Option) (s3.Client, testcontainers.Container, error) {
 	const errMessage = "failed to create new client: %w"
 
