@@ -113,7 +113,7 @@ func (c *client) GetFile(ctx context.Context, path string, options ...GetOption)
 
 	objInfo, err := object.Stat()
 	if err != nil {
-		return nil, fmt.Errorf(errMessage, err)
+		return nil, fmt.Errorf(errMessage, handleClientError(err))
 	}
 
 	if objInfo.Err != nil {
