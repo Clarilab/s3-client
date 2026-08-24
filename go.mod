@@ -7,7 +7,7 @@ require (
 	github.com/minio/minio-go/v7 v7.3.0
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
-	github.com/testcontainers/testcontainers-go/modules/minio v0.43.0
+	github.com/testcontainers/testcontainers-go/modules/minio v0.44.0
 )
 
 require (
