@@ -1,4 +1,4 @@
-package s3 //nolint:revive // package name matches folder name
+package s3
 
 import (
 	"errors"
@@ -46,9 +46,7 @@ func (e *DownloadingFilesFailedError) Error() string {
 func handleClientError(err error) error {
 	const notFound = "NoSuchKey"
 
-	var minioResponse minio.ErrorResponse
-
-	if errors.As(err, &minioResponse) {
+	if minioResponse, ok := errors.AsType[minio.ErrorResponse](err); ok {
 		switch minioResponse.Code {
 		case notFound:
 			return ErrNotFound

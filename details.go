@@ -1,4 +1,4 @@
-package s3 //nolint:revive // package name matches folder name
+package s3
 
 // ClientDetails is a struct for all required connection details.
 type ClientDetails struct {

@@ -2,14 +2,13 @@ package testutils
 
 import (
 	"github.com/Clarilab/s3-client/v4"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/minio"
 )
 
 type containerOptions struct {
-	image       string
-	s3Options   []s3.ClientOption
-	customizers []testcontainers.ContainerCustomizer
+	image     string
+	s3Options []s3.ClientOption
+	username  string
+	password  string
 }
 
 type Option func(*containerOptions)
@@ -31,6 +30,7 @@ func WithS3Options(opts ...s3.ClientOption) Option {
 // WithAuthentication configures the container to use authentication with the given username and password.
 func WithAuthentication(username, password string) Option {
 	return func(o *containerOptions) {
-		o.customizers = append(o.customizers, minio.WithUsername(username), minio.WithPassword(password))
+		o.username = username
+		o.password = password
 	}
 }

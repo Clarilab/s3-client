@@ -1,4 +1,4 @@
-package s3 //nolint:revive // package name matches folder name
+package s3
 
 import (
 	"context"
@@ -28,12 +28,10 @@ func NewClient(details *ClientDetails, options ...ClientOption) (Client, error) 
 	}
 
 	client := &client{
-		bucketName: details.BucketName,
-		urlValues:  make(url.Values),
-		integritySettings: integritySettings{
-			useIntegrityCRC32C: true,
-			useIntegrityMD5:    false,
-		},
+		bucketName:         details.BucketName,
+		urlValues:          make(url.Values),
+		useIntegrityCRC32C: true,
+		useIntegrityMD5:    false,
 	}
 
 	var err error

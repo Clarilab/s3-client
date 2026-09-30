@@ -1,4 +1,4 @@
-package s3_test //nolint:revive // package name matches folder name
+package s3_test
 
 import (
 	"bytes"
@@ -637,7 +637,7 @@ type testEnvironment struct {
 }
 
 func setupTestEnvironment(ctx context.Context, bucketName string) (*testEnvironment, error) {
-	container, err := testutils.NewContainer(ctx, testutils.DefaultImage)
+	container, err := testutils.NewSeaweedFSContainer(ctx, testutils.SeaweedFSImage)
 	if err != nil {
 		return nil, err
 	}

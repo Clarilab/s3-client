@@ -1,4 +1,4 @@
-package s3 //nolint:revive // package name matches folder name
+package s3
 
 import (
 	"context"
@@ -87,11 +87,9 @@ func (c *client) UploadFile(ctx context.Context, upload *Upload, options ...Uplo
 	}
 
 	info := &UploadInfo{
-		Size: objInfo.Size,
-		Integrity: Integrity{
-			ChecksumCRC32C: crc32c,
-			ChecksumMD5:    md5,
-		},
+		Size:           objInfo.Size,
+		ChecksumCRC32C: crc32c,
+		ChecksumMD5:    md5,
 	}
 
 	return info, nil
@@ -194,17 +192,15 @@ func (c *client) GetDirectory(ctx context.Context, path string, options ...GetDi
 		options[i](getDirectoryOptions)
 	}
 
-	doneCh := make(chan struct{})
-	defer close(doneCh)
-
 	objectCh := c.minioClient.ListObjects(ctx, c.bucketName, minio.ListObjectsOptions{
 		Prefix:    path,
 		Recursive: true,
 	})
 
 	wg := new(sync.WaitGroup)
-	errCh := make(chan error)
 	mtx := new(sync.Mutex)
+
+	var errs []error
 
 	result := make([]File, 0, len(objectCh))
 
@@ -213,18 +209,18 @@ func (c *client) GetDirectory(ctx context.Context, path string, options ...GetDi
 			return nil, fmt.Errorf(errMessage, objInfo.Err)
 		}
 
-		wg.Add(1)
-
-		go func(info minio.ObjectInfo) {
-			defer wg.Done()
-
+		wg.Go(func() {
 			doc, err := c.GetFile(
 				ctx,
-				info.Key,
+				objInfo.Key,
 				[]GetOption{WithClientGetOptions(getDirectoryOptions.clientOptions)}...,
 			)
 			if err != nil {
-				errCh <- err
+				mtx.Lock()
+
+				errs = append(errs, err)
+
+				mtx.Unlock()
 
 				return
 			}
@@ -234,16 +230,10 @@ func (c *client) GetDirectory(ctx context.Context, path string, options ...GetDi
 			result = append(result, doc)
 
 			mtx.Unlock()
-		}(objInfo)
+		})
 	}
 
 	wg.Wait()
-	close(errCh)
-
-	errs := make([]error, 0, len(errCh))
-	for err := range errCh {
-		errs = append(errs, err)
-	}
 
 	if len(errs) > 0 {
 		return nil, fmt.Errorf(errMessage, &DownloadingFilesFailedError{errs})
@@ -255,17 +245,15 @@ func (c *client) GetDirectory(ctx context.Context, path string, options ...GetDi
 func (c *client) GetDirectoryInfos(ctx context.Context, path string) ([]*FileInfo, error) {
 	const errMessage = "failed to get directory: %w"
 
-	doneCh := make(chan struct{})
-	defer close(doneCh)
-
 	objectCh := c.minioClient.ListObjects(ctx, c.bucketName, minio.ListObjectsOptions{
 		Prefix:    path,
 		Recursive: true,
 	})
 
 	wg := new(sync.WaitGroup)
-	errCh := make(chan error)
 	mtx := new(sync.Mutex)
+
+	var errs []error
 
 	result := make([]*FileInfo, 0, len(objectCh))
 
@@ -274,14 +262,14 @@ func (c *client) GetDirectoryInfos(ctx context.Context, path string) ([]*FileInf
 			return nil, fmt.Errorf(errMessage, objInfo.Err)
 		}
 
-		wg.Add(1)
-
-		go func(info minio.ObjectInfo) {
-			defer wg.Done()
-
-			fileInfo, err := c.GetFileInfo(ctx, info.Key)
+		wg.Go(func() {
+			fileInfo, err := c.GetFileInfo(ctx, objInfo.Key)
 			if err != nil {
-				errCh <- err
+				mtx.Lock()
+
+				errs = append(errs, err)
+
+				mtx.Unlock()
 
 				return
 			}
@@ -291,16 +279,10 @@ func (c *client) GetDirectoryInfos(ctx context.Context, path string) ([]*FileInf
 			result = append(result, fileInfo)
 
 			mtx.Unlock()
-		}(objInfo)
+		})
 	}
 
 	wg.Wait()
-	close(errCh)
-
-	errs := make([]error, 0, len(errCh))
-	for err := range errCh {
-		errs = append(errs, err)
-	}
 
 	if len(errs) > 0 {
 		return nil, fmt.Errorf(errMessage, &DownloadingFilesFailedError{errs})
@@ -312,43 +294,36 @@ func (c *client) GetDirectoryInfos(ctx context.Context, path string) ([]*FileInf
 func (c *client) DownloadDirectory(ctx context.Context, path, localPath string, recursive bool, options ...DownloadOption) error {
 	const errMessage = "failed to download files from s3: %w"
 
-	doneCh := make(chan struct{})
-	defer close(doneCh)
-
 	objectCh := c.minioClient.ListObjects(ctx, c.bucketName, minio.ListObjectsOptions{
 		Prefix:    path,
 		Recursive: recursive,
 	})
 
 	wg := new(sync.WaitGroup)
-	errCh := make(chan error)
+	mtx := new(sync.Mutex)
+
+	var errs []error
 
 	for objInfo := range objectCh {
 		if objInfo.Err != nil {
 			return fmt.Errorf(errMessage, objInfo.Err)
 		}
 
-		wg.Add(1)
+		wg.Go(func() {
+			fileName := strings.TrimPrefix(objInfo.Key, path+"/")
 
-		go func(info minio.ObjectInfo) {
-			defer wg.Done()
-
-			fileName := strings.TrimPrefix(info.Key, path+"/")
-
-			err := c.DownloadFile(ctx, info.Key, localPath+"/"+fileName, options...)
+			err := c.DownloadFile(ctx, objInfo.Key, localPath+"/"+fileName, options...)
 			if err != nil {
-				errCh <- err
+				mtx.Lock()
+
+				errs = append(errs, err)
+
+				mtx.Unlock()
 			}
-		}(objInfo)
+		})
 	}
 
 	wg.Wait()
-	close(errCh)
-
-	errs := make([]error, 0, len(errCh))
-	for err := range errCh {
-		errs = append(errs, err)
-	}
 
 	if len(errs) > 0 {
 		return fmt.Errorf(errMessage, &DownloadingFilesFailedError{errs})

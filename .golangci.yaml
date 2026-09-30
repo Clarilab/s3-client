@@ -7,6 +7,7 @@ linters:
     - dupword
     - embeddedstructfieldcheck
     - exhaustruct
+    - exhaustruct_v5
     - ginkgolinter
     - godot
     - godox
@@ -286,7 +287,8 @@ formatters:
         - pattern: a[0:b]
           replacement: a[:b]
     gofumpt:
-      extra-rules: true
+      extra:
+        group-params: true
   exclusions:
     generated: lax
     paths:
