@@ -18,4 +18,4 @@ jobs:
     uses: Clarilab/workflows/.github/workflows/go-backend.yaml@main
     with:
       work_dir: .
-      go_version: ">=1.22.4"
+      go_version: ">=1.27.1"

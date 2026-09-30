@@ -10,7 +10,7 @@ import (
 )
 
 func Test_NewClient(t *testing.T) {
-	client, container, err := testutils.NewClient(t.Context(), "my-bucket")
+	client, container, err := testutils.NewSeaweedFSClient(t.Context(), "my-bucket")
 	if err != nil {
 		t.Fatalf("failed to create new client: %v", err)
 	}
